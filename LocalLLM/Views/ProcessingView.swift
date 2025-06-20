@@ -1,3 +1,4 @@
+import LocalLLM // Add import for the main module
 //
 //  ProcessingView.swift
 //  LocalLLM
@@ -6,10 +7,11 @@
 //
 
 import SwiftUI
-import UIKit
+// Removed UIKit import
+import CoreGraphics // Needed for CGImage creation
 
 struct ProcessingView: View {
-    let image: UIImage
+    let imageData: Data // Changed from UIImage to Data
     @State private var receipt: Receipt?
     @State private var isProcessing = true
     @State private var errorMessage: String?
@@ -104,16 +106,22 @@ struct ProcessingView: View {
         Task {
             do {
                 // Step 1: Extract text from image
-                let extractedText = try await receiptScanner.recognizeText(from: image)
+                // Create CGImage from imageData
+                guard let imageSource = CGImageSourceCreateWithData(imageData as CFData, nil),
+                      let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) else {
+                    throw NSError(domain: "ProcessingError", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to create CGImage from provided data."])
+                }
                 
+                let extractedText = try await receiptScanner.recognizeText(from: cgImage) // Pass cgImage
+
                 // Step 2: Process text with LLM to extract items
                 let items = await model.extractReceiptItems(from: extractedText)
-                
+
                 // Step 3: Create receipt object
                 if !items.isEmpty {
-                    let imageData = image.jpegData(compressionQuality: 0.7)
-                    let newReceipt = Receipt(items: items, rawText: extractedText, imageData: imageData)
-                    
+                    // Use the original imageData passed to the view
+                    let newReceipt = Receipt(items: items, rawText: extractedText, imageData: self.imageData)
+
                     // Update UI on main thread
                     await MainActor.run {
                         self.receipt = newReceipt
@@ -137,9 +145,25 @@ struct ProcessingView: View {
 
 struct ProcessingView_Previews: PreviewProvider {
     static var previews: some View {
+        // Create dummy Data for the preview
+        let dummyData = UIImage(systemName: "doc.text")?.pngData() ?? Data()
         NavigationView {
-            ProcessingView(image: UIImage(systemName: "doc.text")!)
+            ProcessingView(imageData: dummyData) // Pass dummyData
                 .environmentObject(Model())
         }
     }
 }
+// Helper UIImage extension needed for preview data generation
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+typealias UIImage = NSImage
+extension NSImage {
+    func pngData() -> Data? {
+        guard let tiffRepresentation = tiffRepresentation,
+              let bitmapImage = NSBitmapImageRep(data: tiffRepresentation) else { return nil }
+        return bitmapImage.representation(using: .png, properties: [:])
+    }
+}
+#endif

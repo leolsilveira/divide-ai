@@ -145,14 +145,44 @@ struct ItemRow: View {
             
             Spacer()
             
-            Text("$\(String(format: "%.2f", item.amount))")
-                .font(.body)
-                .foregroundColor(item.isSelected ? .blue : .primary)
+            // Display quantity and unit price if available, otherwise just total price
+            VStack(alignment: .trailing) {
+                Text(formatCurrency(item.totalPrice)) // Use totalPrice
+                    .font(.body)
+                    .foregroundColor(item.isSelected ? .blue : .primary)
+                if item.quantity != 1.0 || item.unitPrice != nil {
+                    Text(itemDetailText(item: item))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
         }
         .contentShape(Rectangle())
         .onTapGesture {
             item.isSelected.toggle()
         }
+    }
+
+    // Helper to format item details (quantity/unit price)
+    private func itemDetailText(item: ReceiptItem) -> String {
+        var details: [String] = []
+        if item.quantity != 1.0 {
+            // Format quantity nicely (e.g., remove .0)
+            let quantityString = String(format: "%g", item.quantity)
+            details.append("Qty: \(quantityString)")
+        }
+        if let unitPrice = item.unitPrice {
+            details.append("(@ \(formatCurrency(unitPrice)))")
+        }
+        return details.joined(separator: " ")
+    }
+
+     // Helper function copied from main view for preview
+    private func formatCurrency(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencySymbol = "$" // Or use locale-specific symbol
+        return formatter.string(from: NSNumber(value: value)) ?? "$\(String(format: "%.2f", value))"
     }
 }
 
@@ -161,9 +191,10 @@ struct ItemSelectionView_Previews: PreviewProvider {
         NavigationView {
             ItemSelectionView(receipt: Receipt(
                 items: [
-                    ReceiptItem(label: "Burger", amount: 12.99),
-                    ReceiptItem(label: "Fries", amount: 4.99),
-                    ReceiptItem(label: "Soda", amount: 2.99)
+                    // Update initializer to use totalPrice and add other fields
+                    ReceiptItem(label: "Burger", quantity: 1.0, unitPrice: 12.99, totalPrice: 12.99),
+                    ReceiptItem(label: "Fries", quantity: 2.0, unitPrice: 2.50, totalPrice: 5.00), // Example with quantity
+                    ReceiptItem(label: "Soda", quantity: 1.0, unitPrice: nil, totalPrice: 2.99) // Example with no unit price
                 ],
                 rawText: "Sample receipt"
             ))

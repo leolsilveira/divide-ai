@@ -38,48 +38,7 @@ struct SummaryView: View {
                 }
                 .frame(maxWidth: .infinity)
                 
-                // Selected items section
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Selected Items")
-                        .font(.headline)
-                        .padding(.horizontal)
-                    
-                    Divider()
-                    
-                    if selectedItems.isEmpty {
-                        Text("No items selected")
-                            .foregroundColor(.secondary)
-                            .padding()
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    } else {
-                        ForEach(selectedItems) { item in
-                            HStack {
-                                Text(item.label)
-                                Spacer()
-                                Text(formatCurrency(item.amount))
-                            }
-                            .padding(.horizontal)
-                            .padding(.vertical, 5)
-                        }
-                    }
-                    
-                    Divider()
-                    
-                    HStack {
-                        Text("Your Total")
-                            .font(.headline)
-                        Spacer()
-                        Text(formatCurrency(receipt.selectedTotal))
-                            .font(.headline)
-                            .foregroundColor(.blue)
-                    }
-                    .padding(.horizontal)
-                    .padding(.vertical, 5)
-                }
-                .background(Color(.systemBackground))
-                .cornerRadius(10)
-                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                .padding(.horizontal)
+                selectedItemsSection
                 
                 // Receipt details section
                 VStack(alignment: .leading, spacing: 10) {
@@ -169,6 +128,53 @@ struct SummaryView: View {
         }
     }
     
+    private var selectedItemsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Selected Items")
+                .font(.headline)
+                .padding(.horizontal)
+            
+            Divider()
+            
+            if selectedItems.isEmpty {
+                Text("No items selected")
+                    .foregroundColor(.secondary)
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .center)
+            } else {
+                // Correctly iterate over the selectedItems array
+                ForEach(selectedItems) { item in
+                    HStack {
+                        Text(item.label)
+                            .lineLimit(1) // Prevent long labels from wrapping excessively
+                        Spacer()
+                        // Optionally display quantity/unit price details here too
+                        Text(formatCurrency(item.totalPrice)) // Use totalPrice
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 5)
+                }
+            }
+            
+            Divider()
+            
+            HStack {
+                Text("Your Total")
+                    .font(.headline)
+                Spacer()
+                Text(formatCurrency(receipt.selectedTotal))
+                    .font(.headline)
+                    .foregroundColor(.blue)
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 5)
+        }
+        .background(Color(.systemBackground))
+        .cornerRadius(10)
+        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .padding(.horizontal)
+    }
+    
     private var selectedItems: [ReceiptItem] {
         receipt.items.filter { $0.isSelected }
     }
@@ -191,9 +197,10 @@ struct SummaryView: View {
         var text = "My Bill\n\n"
         
         for item in selectedItems {
-            text += "\(item.label): \(formatCurrency(item.amount))\n"
+            // Include quantity/unit price details in shared text if desired
+            text += "\(item.label): \(formatCurrency(item.totalPrice))\n" // Use totalPrice
         }
-        
+
         text += "\nTotal: \(formatCurrency(receipt.selectedTotal))"
         
         shareText = text
@@ -219,11 +226,13 @@ struct SummaryView_Previews: PreviewProvider {
         NavigationView {
             SummaryView(receipt: Receipt(
                 items: [
-                    ReceiptItem(label: "Burger", amount: 12.99, isSelected: true),
-                    ReceiptItem(label: "Fries", amount: 4.99, isSelected: true),
-                    ReceiptItem(label: "Soda", amount: 2.99, isSelected: false)
+                    // Update initializer to use totalPrice and add other fields
+                    ReceiptItem(label: "Burger", quantity: 1.0, unitPrice: 12.99, totalPrice: 12.99, isSelected: true),
+                    ReceiptItem(label: "Fries", quantity: 2.0, unitPrice: 2.50, totalPrice: 5.00, isSelected: true),
+                    ReceiptItem(label: "Soda", quantity: 1.0, unitPrice: nil, totalPrice: 2.99, isSelected: false)
                 ],
-                rawText: "Sample receipt"
+                rawText: "Sample receipt",
+                imageData: nil // Add missing imageData for preview
             ))
             .environmentObject(Model())
         }
